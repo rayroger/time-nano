@@ -1,0 +1,55 @@
+name: Android CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK components
+        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Use system Gradle
+        run: gradle --version
+
+      - name: Auto-accept SDK licenses
+        run: yes | sdkmanager --licenses
+
+      - name: Build Debug APK
+        env:
+          CI: true
+        run: |
+          VERSION_CODE=${{ github.run_number }}
+          VERSION_NAME=1.0.${{ github.run_number }}
+          gradle :app:assembleDebug -PversionCode=$VERSION_CODE -PversionName=$VERSION_NAME
+
+      - name: Sign APK
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > /tmp/keystore.jks
+          jarsigner -keystore /tmp/keystore.jks -storepass "$KEYSTORE_PASSWORD" -keypass "$KEY_PASSWORD" app/build/outputs/apk/debug/app-debug.apk "$KEY_ALIAS"
