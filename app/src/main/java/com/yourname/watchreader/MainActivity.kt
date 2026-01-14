@@ -113,6 +113,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun imageProxyToBitmap(image: ImageProxy): Bitmap {
+        // ImageCapture produces JPEG format, so we need to decode from the JPEG buffer
         val buffer: ByteBuffer = image.planes[0].buffer
         val bytes = ByteArray(buffer.remaining())
         buffer.get(bytes)
