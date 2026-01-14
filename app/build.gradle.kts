@@ -36,7 +36,11 @@ android {
 }
 
 dependencies {
-    implementation(libs.mlkit.genai)
+    implementation(libs.mlkit.genai.prompt)
+    implementation(libs.camerax.core)
+    implementation(libs.camerax.camera2)
+    implementation(libs.camerax.lifecycle)
+    implementation(libs.camerax.view)
     implementation(libs.core.ktx)
     implementation(libs.appcompat)
     implementation(libs.material)

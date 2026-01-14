@@ -1,24 +1,52 @@
 package com.yourname.watchreader
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.Matrix
 import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.ImageProxy
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import com.google.mlkit.vision.genai.BitmapPart
-import com.google.mlkit.vision.genai.GenerativeModelClient
+import com.google.mlkit.vision.genai.Generation
+import com.google.mlkit.vision.genai.GenerativeModel
+import com.google.mlkit.vision.genai.ImagePart
 import com.google.mlkit.vision.genai.TextPart
+import com.google.mlkit.vision.genai.generateContentRequest
 import kotlinx.coroutines.launch
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var resultText: TextView
+    private lateinit var previewView: PreviewView
+    private lateinit var cameraExecutor: ExecutorService
+    private var imageCapture: ImageCapture? = null
 
-    private val modelClient by lazy {
-        GenerativeModelClient.builder()
-            .setModelName("gemini-nano")
-            .build(this)
+    private val cameraPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            startCamera()
+        } else {
+            Toast.makeText(this, "Camera permission is required", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private val generativeModel: GenerativeModel by lazy {
+        Generation.getClient()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -26,11 +54,94 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         resultText = findViewById(R.id.resultText)
+        previewView = findViewById(R.id.previewView)
         val readButton = findViewById<Button>(R.id.readButton)
 
+        cameraExecutor = Executors.newSingleThreadExecutor()
+
         readButton.setOnClickListener {
-            val currentBitmap: Bitmap = obtainWatchBitmap()
-            readTimeFromWatch(currentBitmap)
+            captureAndAnalyze()
+        }
+
+        // Request camera permission
+        when {
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED -> {
+                startCamera()
+            }
+            else -> {
+                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+            }
+        }
+    }
+
+    private fun startCamera() {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+
+        cameraProviderFuture.addListener({
+            val cameraProvider = cameraProviderFuture.get()
+
+            val preview = Preview.Builder()
+                .build()
+                .also {
+                    it.surfaceProvider = previewView.surfaceProvider
+                }
+
+            imageCapture = ImageCapture.Builder()
+                .build()
+
+            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+
+            try {
+                cameraProvider.unbindAll()
+                cameraProvider.bindToLifecycle(
+                    this,
+                    cameraSelector,
+                    preview,
+                    imageCapture
+                )
+            } catch (e: Exception) {
+                resultText.text = getString(R.string.error_template, "Camera initialization failed")
+            }
+        }, ContextCompat.getMainExecutor(this))
+    }
+
+    private fun captureAndAnalyze() {
+        val imageCapture = imageCapture ?: return
+
+        imageCapture.takePicture(
+            ContextCompat.getMainExecutor(this),
+            object : ImageCapture.OnImageCapturedCallback() {
+                override fun onCaptureSuccess(image: ImageProxy) {
+                    val bitmap = imageProxyToBitmap(image)
+                    image.close()
+                    readTimeFromWatch(bitmap)
+                }
+
+                override fun onError(exception: ImageCaptureException) {
+                    resultText.text = getString(R.string.error_template, "Capture failed")
+                }
+            }
+        )
+    }
+
+    private fun imageProxyToBitmap(image: ImageProxy): Bitmap {
+        val buffer = image.planes[0].buffer
+        val bytes = ByteArray(buffer.remaining())
+        buffer.get(bytes)
+        
+        val bitmap = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+        
+        // Rotate the bitmap if needed based on image rotation
+        val rotationDegrees = image.imageInfo.rotationDegrees
+        return if (rotationDegrees != 0) {
+            val matrix = Matrix()
+            matrix.postRotate(rotationDegrees.toFloat())
+            Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+        } else {
+            bitmap
         }
     }
 
@@ -38,19 +149,29 @@ class MainActivity : AppCompatActivity() {
         resultText.text = getString(R.string.status_thinking)
 
         val prompt = "Analyze this analog watch. What time is shown? Be precise. Return only HH:mm."
-        val input = listOf(TextPart(prompt), BitmapPart(bitmap))
 
         lifecycleScope.launch {
             try {
-                val response = modelClient.generateContent(input)
-                resultText.text = getString(R.string.time_template, response.text)
+                val response = generativeModel.generateContent(
+                    generateContentRequest(
+                        ImagePart(bitmap),
+                        TextPart(prompt)
+                    ) {
+                        temperature = 0.2f
+                        topK = 10
+                        candidateCount = 1
+                        maxOutputTokens = 10
+                    }
+                )
+                resultText.text = getString(R.string.time_template, response.text ?: "Unable to read")
             } catch (e: Exception) {
-                resultText.text = getString(R.string.error_template, e.localizedMessage)
+                resultText.text = getString(R.string.error_template, e.localizedMessage ?: "Unknown error")
             }
         }
     }
 
-    private fun obtainWatchBitmap(): Bitmap {
-        throw NotImplementedError("Replace with camera capture implementation.")
+    override fun onDestroy() {
+        super.onDestroy()
+        cameraExecutor.shutdown()
     }
 }
