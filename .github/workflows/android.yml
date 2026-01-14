@@ -1,11 +1,11 @@
 name: Android CI
 
 on:
-  workflow_dispatch: 
+  workflow_dispatch:
   push:
     branches: [ main, master ]
   pull_request:
-    branches: [ main, master]
+    branches: [ main, master ]
 
 permissions:
   contents: read
@@ -24,14 +24,35 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install SDK components
-        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
-
-      - name: Use system Gradle
-        run: gradle --version
+      - name: Ensure Build Tools 35.0.0+
+        run: |
+          #!/bin/bash
+          set -e
+          REQUIRED_VER=35.0.0
+          SDK_DIR="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          if [ -d "$SDK_DIR/build-tools" ]; then
+            ls "$SDK_DIR/build-tools"
+            EXISTING_VER=$(ls "$SDK_DIR/build-tools" | sort -V | tail -n 1)
+            if [ "$(printf '%s\n' "$REQUIRED_VER" "$EXISTING_VER" | sort -V | head -n 1)" = "$REQUIRED_VER" ]; then
+              echo "Required build-tools version ($REQUIRED_VER) is present or newer. Skipping install."
+              exit 0
+            fi
+          fi
+          echo "Installing build-tools $REQUIRED_VER"
+          sdkmanager "build-tools;$REQUIRED_VER"
 
       - name: Auto-accept SDK licenses
         run: yes | sdkmanager --licenses
@@ -45,7 +66,6 @@ jobs:
           gradle :app:assembleDebug -PversionCode=$VERSION_CODE -PversionName=$VERSION_NAME
 
       - name: Sign APK
-        
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
