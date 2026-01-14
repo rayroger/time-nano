@@ -171,7 +171,8 @@ class MainActivity : AppCompatActivity() {
                         maxOutputTokens = 10
                     }
                 )
-                resultText.text = getString(R.string.time_template, response.text ?: "Unable to read")
+                val responseText = response.candidates.firstOrNull()?.text ?: "Unable to read"
+                resultText.text = getString(R.string.time_template, responseText)
             } catch (e: Exception) {
                 resultText.text = getString(R.string.error_template, e.localizedMessage ?: "Unknown error")
             }
