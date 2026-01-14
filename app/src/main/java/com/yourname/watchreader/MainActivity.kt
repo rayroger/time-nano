@@ -3,6 +3,7 @@ package com.yourname.watchreader
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.os.Bundle
 import android.util.Log
@@ -20,16 +21,21 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import com.google.mlkit.vision.genai.Generation
-import com.google.mlkit.vision.genai.GenerativeModel
-import com.google.mlkit.vision.genai.ImagePart
-import com.google.mlkit.vision.genai.TextPart
-import com.google.mlkit.vision.genai.generateContentRequest
+import com.google.mlkit.genai.prompt.Generation
+import com.google.mlkit.genai.prompt.GenerativeModel
+import com.google.mlkit.genai.prompt.ImagePart
+import com.google.mlkit.genai.prompt.TextPart
+import com.google.mlkit.genai.prompt.generateContentRequest
 import kotlinx.coroutines.launch
+import java.nio.ByteBuffer
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
+
+    companion object {
+        private const val TAG = "MainActivity"
+    }
 
     private lateinit var resultText: TextView
     private lateinit var previewView: PreviewView
@@ -110,71 +116,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun captureAndAnalyze() {
-        val imageCapture = imageCapture ?: return
-
-        imageCapture.takePicture(
-            ContextCompat.getMainExecutor(this),
-            object : ImageCapture.OnImageCapturedCallback() {
-                override fun onCaptureSuccess(image: ImageProxy) {
-                    val bitmap = imageProxyToBitmap(image)
-                    image.close()
-                    readTimeFromWatch(bitmap)
-                }
-
-                override fun onError(exception: ImageCaptureException) {
-                    resultText.text = getString(R.string.error_template, "Capture failed")
-                }
-            }
-        )
-    }
-
-    private fun imageProxyToBitmap(image: ImageProxy): Bitmap {
-        val buffer = image.planes[0].buffer
-        val bytes = ByteArray(buffer.remaining())
-        buffer.get(bytes)
-        
-        val bitmap = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-        
-        // Rotate the bitmap if needed based on image rotation
-        val rotationDegrees = image.imageInfo.rotationDegrees
-        return if (rotationDegrees != 0) {
-            val matrix = Matrix()
-            matrix.postRotate(rotationDegrees.toFloat())
-            Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
-        } else {
-            bitmap
-        }
-    }
-
-    private fun startCamera() {
-        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
-
-        cameraProviderFuture.addListener({
-            val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
-
-            val preview = Preview.Builder()
-                .build()
-                .also {
-                    it.setSurfaceProvider(previewView.surfaceProvider)
-                }
-
-            imageCapture = ImageCapture.Builder().build()
-
-            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-
-            try {
-                cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(
-                    this, cameraSelector, preview, imageCapture
-                )
-            } catch (exc: Exception) {
-                Log.e(TAG, "Use case binding failed", exc)
-            }
-
-        }, ContextCompat.getMainExecutor(this))
-    }
-
-    private fun captureImage() {
         val imageCapture = imageCapture ?: return
 
         resultText.text = getString(R.string.status_thinking)
