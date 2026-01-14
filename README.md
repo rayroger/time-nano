@@ -37,17 +37,23 @@ android {
 }
 
 dependencies {
-    // ML Kit GenAI for Gemini Nano Access
-    implementation("com.google.mlkit:genai:1.0.0-beta01")
+    // ML Kit GenAI Prompt API for Gemini Nano Access
+    implementation("com.google.mlkit:genai-prompt:1.0.0-alpha1")
+
+    // CameraX for camera capture
+    implementation("androidx.camera:camera-core:1.3.1")
+    implementation("androidx.camera:camera-camera2:1.3.1")
+    implementation("androidx.camera:camera-lifecycle:1.3.1")
+    implementation("androidx.camera:camera-view:1.3.1")
 
     // Standard UI and Lifecycle
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
-    implementation("com.google.android.material:material:1.11.0")
+    implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
 }
 ```
-> Note: ML Kit GenAI is currently published as `1.0.0-beta01`. Update to the stable release when available.
+> Note: ML Kit GenAI Prompt API is currently published as `1.0.0-alpha1`. Update to the stable release when available.
 
 ### 2) `AndroidManifest.xml`
 ```xml
@@ -72,67 +78,88 @@ dependencies {
 ```kotlin
 package com.yourname.watchreader
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.camera.core.*
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import com.google.mlkit.vision.genai.GenerativeModelClient
-import com.google.mlkit.vision.genai.TextPart
-import com.google.mlkit.vision.genai.BitmapPart
+import com.google.mlkit.vision.genai.*
 import kotlinx.coroutines.launch
+import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var resultText: TextView
+    private lateinit var previewView: PreviewView
+    private val cameraExecutor = Executors.newSingleThreadExecutor()
+    private var imageCapture: ImageCapture? = null
 
-    // Initialize the Gemini Nano Client
-    private val modelClient by lazy {
-        GenerativeModelClient.builder()
-            .setModelName("gemini-nano")
-            .build(this)
-    }
+    private val generativeModel by lazy { Generation.getClient() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         resultText = findViewById(R.id.resultText)
+        previewView = findViewById(R.id.previewView)
         val readButton = findViewById<Button>(R.id.readButton)
 
-        readButton.setOnClickListener {
-            // Replace with the bitmap captured from camera
-            val currentBitmap: Bitmap = obtainWatchBitmap()
-            readTimeFromWatch(currentBitmap)
+        readButton.setOnClickListener { captureAndAnalyze() }
+
+        // Request camera permission and start camera
+        when {
+            ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) 
+                == PackageManager.PERMISSION_GRANTED -> startCamera()
+            else -> requestCameraPermission()
         }
+    }
+
+    private fun captureAndAnalyze() {
+        imageCapture?.takePicture(
+            ContextCompat.getMainExecutor(this),
+            object : ImageCapture.OnImageCapturedCallback() {
+                override fun onCaptureSuccess(image: ImageProxy) {
+                    val bitmap = convertImageToBitmap(image)
+                    image.close()
+                    readTimeFromWatch(bitmap)
+                }
+            }
+        )
     }
 
     private fun readTimeFromWatch(bitmap: Bitmap) {
         resultText.text = "Thinking..."
 
         val prompt = "Analyze this analog watch. What time is shown? Be precise. Return only HH:mm."
-        val input = listOf(TextPart(prompt), BitmapPart(bitmap))
 
         lifecycleScope.launch {
             try {
-                val response = modelClient.generateContent(input)
+                val response = generativeModel.generateContent(
+                    generateContentRequest(ImagePart(bitmap), TextPart(prompt)) {
+                        temperature = 0.2f
+                        topK = 10
+                    }
+                )
                 resultText.text = "Time: ${response.text}"
             } catch (e: Exception) {
                 resultText.text = "Error: ${e.localizedMessage}"
             }
         }
     }
-
-    // TODO: Implement camera capture to provide the bitmap
-    private fun obtainWatchBitmap(): Bitmap {
-        throw NotImplementedError("Replace with camera capture implementation.")
-    }
 }
 ```
 
 ### 4) Layout note
-Add `activity_main.xml` with at least a `Button` (`@+id/readButton`) and a `TextView` (`@+id/resultText`). Wire your camera preview/capture to supply the bitmap in `obtainWatchBitmap()`.
+The layout includes a `PreviewView` for camera preview and a button to capture and analyze. The app uses CameraX for camera functionality and ML Kit GenAI Prompt API for on-device image analysis with Gemini Nano.
 
 ## 🧪 Build & Run
 1. Clone the repo.

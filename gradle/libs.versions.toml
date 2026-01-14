@@ -3,10 +3,10 @@ agp = "8.6.0"
 kotlin = "2.1.0"
 coreKtx = "1.12.0"
 appcompat = "1.6.1"
-material = "1.11.0"
+material = "1.12.0"
 lifecycleRuntimeKtx = "2.7.0"
 mlkitGenaiPrompt = "1.0.0-alpha1"
-camerax = "1.5.2"
+cameraxVersion = "1.3.1"
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -18,7 +18,7 @@ appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "a
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
 mlkit-genai-prompt = { group = "com.google.mlkit", name = "genai-prompt", version.ref = "mlkitGenaiPrompt" }
-camerax-core = { group = "androidx.camera", name = "camera-core", version.ref = "camerax" }
-camerax-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
-camerax-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
-camerax-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
+camerax-core = { group = "androidx.camera", name = "camera-core", version.ref = "cameraxVersion" }
+camerax-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "cameraxVersion" }
+camerax-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "cameraxVersion" }
+camerax-view = { group = "androidx.camera", name = "camera-view", version.ref = "cameraxVersion" }
