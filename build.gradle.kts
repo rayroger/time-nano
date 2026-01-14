@@ -1,3 +1,4 @@
 plugins {
-    // Versions defined in libs.versions.toml
+    alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.kotlin.android) apply false
 }
