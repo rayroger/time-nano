@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Watch Reader AI</string>
+    <string name="action_read">Capture &amp; Identify</string>
+    <string name="status_idle">Ready to read your watch.</string>
+    <string name="status_thinking">Thinking...</string>
+    <string name="time_template">Time: %1$s</string>
+    <string name="error_template">Error: %1$s</string>
+</resources>

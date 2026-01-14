@@ -1,0 +1,19 @@
+[versions]
+agp = "8.6.0"
+kotlin = "1.9.24"
+coreKtx = "1.12.0"
+appcompat = "1.6.1"
+material = "1.11.0"
+lifecycleRuntimeKtx = "2.7.0"
+mlkitGenai = "1.0.0-beta01"
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+
+[libraries]
+core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
+material = { group = "com.google.android.material", name = "material", version.ref = "material" }
+lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
+mlkit-genai = { group = "com.google.mlkit", name = "genai", version.ref = "mlkitGenai" }
