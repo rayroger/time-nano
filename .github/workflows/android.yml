@@ -57,15 +57,19 @@ jobs:
       - name: Auto-accept SDK licenses
         run: yes | sdkmanager --licenses
 
+      - name: Make Gradlew Executable
+        run: chmod +x gradlew
+
       - name: Build Debug APK
         env:
           CI: true
         run: |
           VERSION_CODE=${{ github.run_number }}
           VERSION_NAME=1.0.${{ github.run_number }}
-          gradle :app:assembleDebug -PversionCode=$VERSION_CODE -PversionName=$VERSION_NAME
+          ./gradlew :app:assembleDebug -PversionCode=$VERSION_CODE -PversionName=$VERSION_NAME
 
       - name: Sign APK
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}

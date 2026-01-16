@@ -13,6 +13,9 @@ android {
         targetSdk = 35
         versionCode = (project.findProperty("versionCode") as String?)?.toIntOrNull() ?: 1
         versionName = (project.findProperty("versionName") as String?) ?: "1.0"
+        
+        // Add your Gemini API key here or in local.properties
+        buildConfigField("String", "GEMINI_API_KEY", "\"${project.findProperty("GEMINI_API_KEY") ?: ""}\"")
     }
 
     compileOptions {
@@ -26,6 +29,7 @@ android {
 
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
 
     buildTypes {
@@ -40,7 +44,7 @@ android {
 }
 
 dependencies {
-    implementation(libs.mlkit.genai.prompt)
+    implementation(libs.google.ai.client)
     implementation(libs.camerax.core)
     implementation(libs.camerax.camera2)
     implementation(libs.camerax.lifecycle)
