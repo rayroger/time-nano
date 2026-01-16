@@ -53,7 +53,7 @@ jobs:
 
     - name: Upload APK as build artifact
       if: success()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ github.event.inputs.buildType }}-build
         path: app/build/outputs/apk/${{ github.event.inputs.buildType }}/ # Adjust the path to your build output directory
