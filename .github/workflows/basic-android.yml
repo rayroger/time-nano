@@ -23,6 +23,13 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Validate keystore presence
+    run: |
+      echo ${{ secrets.KEYSTORE_BASE64 }} | base64 -d > keystore.jks
+      if [ ! -f keystore.jks ]; then
+        echo "Keystore generation failed" && exit 1
+      fi
+
     - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
