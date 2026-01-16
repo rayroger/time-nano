@@ -21,11 +21,10 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import com.google.mlkit.vision.genai.Generation
-import com.google.mlkit.vision.genai.GenerativeModel
-import com.google.mlkit.vision.genai.ImagePart
-import com.google.mlkit.vision.genai.TextPart
-import com.google.mlkit.vision.genai.generateContentRequest
+import com.google.ai.client.generativeai.GenerativeModel
+import com.google.ai.client.generativeai.type.GenerateContentResponse
+import com.google.ai.client.generativeai.type.content
+import com.google.ai.client.generativeai.type.generationConfig
 import kotlinx.coroutines.launch
 import java.nio.ByteBuffer
 import java.util.concurrent.ExecutorService
@@ -53,7 +52,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val generativeModel: GenerativeModel by lazy {
-        Generation.getClient()
+        GenerativeModel(
+            modelName = "gemini-1.5-flash",
+            apiKey = BuildConfig.GEMINI_API_KEY
+        )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -158,14 +160,9 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 val response = generativeModel.generateContent(
-                    generateContentRequest(
-                        ImagePart(bitmap),
-                        TextPart(prompt)
-                    ) {
-                        temperature = 0.2f
-                        topK = 10
-                        candidateCount = 1
-                        maxOutputTokens = 10
+                    content {
+                        image(bitmap)
+                        text(prompt)
                     }
                 )
                 resultText.text = getString(R.string.time_template, response.text ?: "Unable to read")
